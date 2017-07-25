@@ -1,0 +1,51 @@
+{
+	"variables": {
+		"disk_size": "1000000"
+	},
+	"builders": [{
+	"type": "virtualbox-iso",
+	"guest_os_type": "RedHat_64",
+	"iso_checksum_type": "md5",
+	"iso_url": "http://ftp.unicamp.br/pub/centos/6.9/isos/x86_64/CentOS-6.9-x86_64-LiveDVD.iso",
+	"iso_checksum": "a807045c5f8037686f3375bd7b463753",
+	"disk_size": "{{user `disk_size`}}",
+	"hard_drive_interface": "sata",
+	"ssh_username": "vagrant",
+	"ssh_password": "vagrant",
+	"shutdown_command": "sudo -S shutdown -P now",
+	"http_directory": "http",
+	"vboxmanage": [
+		["modifyvm", "{{.Name}}", "--memory", "4096"],
+		["modifyvm", "{{.Name}}", "--cpus", "2"],
+		["modifyvm", "{{.Name}}", "--vram", "32"]
+	],
+	"boot_command": [
+	  "<wait><esc><esc>",
+	  "linux ks=http://{{.HTTPIP}}:{{.HTTPPort}}/kickstart<enter>"
+	]
+	}],
+	"post-processors": ["vagrant"],
+	"provisioners": [{
+		"type": "shell",
+		"inline": [
+			"sleep 30",
+			"sudo mkdir /tmp/vboxguest",
+			"sudo mount -t iso9660 -o loop /home/vagrant/VBoxGuestAdditions.iso /tmp/vboxguest",
+			"sudo yum -y --enablerepo rpmforge install dkms",
+			"sudo yum -y groupinstall 'Development Tools'",
+			"sudo yum -y install kernel-devel-2.6.32-504.el6.x86_64",
+			"cd /tmp/vboxguest",
+			"sudo ./VBoxLinuxAdditions.run",
+			"cd /tmp",
+			"sudo umount /tmp/vboxguest",
+			"sudo rmdir /tmp/vboxguest",
+			"rm /home/vagrant/VBoxGuestAdditions.iso",
+			"sudo yum install -y curl",
+			"mkdir -p /home/vagrant/chef && cd /home/vagrant/chef",
+			"wget https://packages.chef.io/files/stable/chef-server/12.15.8/el/6/chef-server-core-12.15.8-1.el6.x86_64.rpm",
+			"yes | sudo rpm -Uvh /home/vagrant/chef/chef-server-core-12.1.1-1.el6.x86_64.rpm",
+			"sudo chef-server-ctl reconfigure",
+			"echo Image Provisioned!"
+		]
+	}]
+}
